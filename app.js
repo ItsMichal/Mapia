@@ -358,8 +358,8 @@ function cmdtest(rq){
 function is_match(real,user){
   //TODO: Multiple answers
   var isMatch = false;
-  var user_f = user.replace(/\s+/g, '');
-  var real_f = real.replace(/\s+/g, '');
+  var user_f = user.replace(/\s+/g, '').toLowerCase();
+  var real_f = real.replace(/\s+/g, '').toLowerCase();
   console.log(user_f);
   console.log(real_f);
 
@@ -370,6 +370,7 @@ function is_match(real,user){
       isMatch = true;
     }
   }
+
   return isMatch;
 }
 
