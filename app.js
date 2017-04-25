@@ -68,7 +68,7 @@ console.log(work[0].data);
 for(var i = 1; i < work[0].data.length; i++){
   //console.log(continent);
   //console.log(typeof continent);
-  
+
   var isRowFilled = (typeof work[0].data[i][0] !== "string" || work[0].data[i][0] == "" || work[0].data[i][0] == " ");
   isRowFilled = isRowFilled || (typeof work[0].data[i][1] !== "string" || work[0].data[i][1] == "" || work[0].data[i][1] == " ");
   isRowFilled = isRowFilled || (typeof work[0].data[i][2] !== "string" || work[0].data[i][2] == "" || work[0].data[i][2] == " ");
@@ -266,11 +266,8 @@ function cmdtest(rq){
 
         //GET/PARSE CONTINENT
         var answer;
-        var words = req.toLowerCase().split(" ");
-        for(var i = 0; i < words.length; i++){
-          if(map[gameTree.target.continent][gameTree.target.region][words[i]] !== undefined){
-            answer = words[i];
-          }
+        if(map[gameTree.target.continent][gameTree.target.region][req.toLowerCase()] !== undefined){
+            answer = req.toLowerCase();
         }
         //END GET/PARSE CONTINENT
 
@@ -360,7 +357,20 @@ function cmdtest(rq){
 
 function is_match(real,user){
   //TODO: Multiple answers
-  return (user.indexOf(real.toLowerCase()) > -1);
+  var isMatch = false;
+  var user_f = user.replace(/\s+/g, '');
+  var real_f = real.replace(/\s+/g, '');
+  console.log(user_f);
+  console.log(real_f);
+
+  var ranswers = real_f.toLowerCase().split("/");
+  console.log(ranswers);
+  for(var i = 0; i < ranswers.length; i++){
+    if(user_f.indexOf(ranswers[i]) > -1){
+      isMatch = true;
+    }
+  }
+  return isMatch;
 }
 
 function getQuestion(){
