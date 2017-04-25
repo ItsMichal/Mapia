@@ -124,7 +124,7 @@ app.get('/', function(rq, rs){
   rs.send('app.html');
 });
 
-app.get('/webhook', function(rq, rs){
+app.post('/webhook', function(rq, rs){
   rs.set('Content-Type', 'application/json');
   var response = cmdtest(input);
   rs.send({"speech":response, "displayText":response});
