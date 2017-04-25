@@ -45,7 +45,7 @@ var gameTree = {
   "config":{
     "lives":3,
     "correct": "Correct! Next question:",
-    "incorrect": "Incorrect! Try again! Lives Left: "
+    "incorrect": "Incorrect! Try again! Lives Left: ",
     "reset": "Resetting. Say something to restart!"
   },
 
