@@ -394,3 +394,7 @@ function getQuestion(){
   }
   return res;
 }
+
+http.listen(app.get('port'), function() {
+  console.log('Mapia Running...');
+});
