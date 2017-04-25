@@ -57,7 +57,7 @@ var gameTree = {
   }
 }
 
-var o_gameTree = gameTree;
+var o_gameTree = JSON.parse(JSON.stringify(gameTree));
 
 var work = xlsx.parse(`${__dirname}/test.xlsx`)
 
@@ -292,7 +292,7 @@ function cmdtest(rq){
       gameTree.position++;
     }else if(gameTree.position == 5){
       if(req.indexOf("reset") > -1){
-        gameTree = o_gameTree;
+        gameTree = JSON.parse(JSON.stringify(o_gameTree));
         res+=gameTree.config.reset;
 
       }else if(gameTree.target.continent === undefined){
