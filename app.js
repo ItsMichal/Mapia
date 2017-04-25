@@ -21,20 +21,20 @@ var gameTree = {
   "continent": {
     "response":"What continent would you like to be quized on? Say all for all questions. ",
     "listPrefix":"The continents are: ",
-    "error":"Sorry, I didn't get what you said. Please try saying the name of the continent exactly."
+    "error":"Sorry, I didn't get what you said. Please try saying the name of the continent exactly. "
   },
   "region": {
     "response":"What region would you like to be quized on? Say all for all regions. ",
     "listPrefix":"The regions are: ",
-    "error":"Sorry, I didn't get what you said. Please try saying the name of the region exactly."
+    "error":"Sorry, I didn't get what you said. Please try saying the name of the region exactly. "
   },
   "country":{
     "response":"What country would you like to be quized on? Say all for all countries. ",
     "listPrefix":"The countries are: ",
-    "error":"Sorry, I didn't get what you said. Please try saying the name of the country exactly."
+    "error":"Sorry, I didn't get what you said. Please try saying the name of the country exactly. "
   },
   "position":0,
-  "confirm":"Alright, you are set! Get ready!",
+  "confirm":"Alright, you are set! Get ready! ",
 
   "target":{
     "continent":undefined,
@@ -44,9 +44,9 @@ var gameTree = {
 
   "config":{
     "lives":3,
-    "correct": "Correct! Next question:",
+    "correct": "Correct! Next question: ",
     "incorrect": "Incorrect! Try again! Lives Left: ",
-    "reset": "Resetting. Say something to restart!"
+    "reset": "Resetting. Say something to restart! "
   },
 
   "indexes":{
@@ -121,7 +121,7 @@ app.use(express.static(__dirname + '/public'));
 
 //You can delete this, its pretty unneccessary.
 app.get('/', function(rq, rs){
-  rs.send('app.html');
+  rs.send('/app.html');
 });
 
 app.post('/webhook', function(rq, rs){
