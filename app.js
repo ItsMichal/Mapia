@@ -63,43 +63,53 @@ var work = xlsx.parse(`${__dirname}/test.xlsx`)
 
 var map = {};
 
-console.log(work[0].data[0]);
+console.log(work[0].data);
 //increment thru xlsx by row
 for(var i = 1; i < work[0].data.length; i++){
+  //console.log(continent);
+  //console.log(typeof continent);
+  
+  var isRowFilled = (typeof work[0].data[i][0] !== "string" || work[0].data[i][0] == "" || work[0].data[i][0] == " ");
+  isRowFilled = isRowFilled || (typeof work[0].data[i][1] !== "string" || work[0].data[i][1] == "" || work[0].data[i][1] == " ");
+  isRowFilled = isRowFilled || (typeof work[0].data[i][2] !== "string" || work[0].data[i][2] == "" || work[0].data[i][2] == " ");
+  isRowFilled = isRowFilled || (typeof work[0].data[i][3] !== "string" || work[0].data[i][3] == "" || work[0].data[i][3] == " ");
+  isRowFilled = isRowFilled || (typeof work[0].data[i][4] !== "string" || work[0].data[i][4] == "" || work[0].data[i][4] == " ");
 
-  var continent = (work[0].data[i][0]).toLowerCase();
-  var region = (work[0].data[i][1]).toLowerCase();
-  var country = (work[0].data[i][2]).toLowerCase();
-  var jordon = (work[0].data[i][3]).toLowerCase();
-  var hope = (work[0].data[i][4]).toLowerCase();
+  if(!isRowFilled){
+    var continent = (work[0].data[i][0]).toLowerCase();
+    var region = (work[0].data[i][1]).toLowerCase();
+    var country = (work[0].data[i][2]).toLowerCase();
+    var jordon = (work[0].data[i][3]).toLowerCase();
+    var hope = (work[0].data[i][4]).toLowerCase();
 
 
-  //if continent not found in our JSON map
-  if(!(continent in map)){
-    //Push the continent,region,and country to our JSON map
-    map[continent] = {};
-    map[continent][region] = {};
-    map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
-
-    //TODO: ADD Q&A DATA
-  }else{
-    //Get index of region
-    //var indx1 = map.indexOfcontinent;
-
-    //Check if region is already in the map
-    if(!(region in map[continent] )){
-      //if not, lets create a reference to region and country (and add Q&A data)
+    //if continent not found in our JSON map
+    if(!(continent in map)){
+      //Push the continent,region,and country to our JSON map
+      map[continent] = {};
       map[continent][region] = {};
       map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
+
+      //TODO: ADD Q&A DATA
     }else{
-      //if yes, lets see if country is in map
-      if(!(country in map[continent][region])){
-        //if yes, lets add the country to the map (along with Q&A data)
+      //Get index of region
+      //var indx1 = map.indexOfcontinent;
+
+      //Check if region is already in the map
+      if(!(region in map[continent] )){
+        //if not, lets create a reference to region and country (and add Q&A data)
+        map[continent][region] = {};
         map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
       }else{
-        //if yes, lets just add the Q&A data
-        map[continent][region][country]["Question"].push(jordon);
-        map[continent][(region)][country]["Answer"].push(hope);
+        //if yes, lets see if country is in map
+        if(!(country in map[continent][region])){
+          //if yes, lets add the country to the map (along with Q&A data)
+          map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
+        }else{
+          //if yes, lets just add the Q&A data
+          map[continent][region][country]["Question"].push(jordon);
+          map[continent][(region)][country]["Answer"].push(hope);
+        }
       }
     }
   }
@@ -300,7 +310,7 @@ function cmdtest(rq){
         if(is_match(answer, req)){
           res += gameTree.config.correct;
           res += getQuestion();
-          gameTree.position--;
+          //gameTree.position--;
         }else{
           gameTree.config.lives--;
           res+=gameTree.config.incorrect + gameTree.config.lives;
@@ -349,7 +359,8 @@ function cmdtest(rq){
 }
 
 function is_match(real,user){
-  return (user.indexOf(real) > -1);
+  //TODO: Multiple answers
+  return (user.indexOf(real.toLowerCase()) > -1);
 }
 
 function getQuestion(){
