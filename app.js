@@ -5,6 +5,7 @@ var fs = require('fs');
 var path = require('path');
 var http = require('http').Server(app);
 var xlsx = require('node-xlsx');
+var io = require('socket.io')(http);
 const readline = require('readline');
 const util = require('util');
 
@@ -15,9 +16,23 @@ const rl = readline.createInterface({
 
 var answering = false;
 
-
+var highScore = 0;
 
 var gameTree = {
+  "game":{
+    "setup":{
+      "response":"Hello! Welcome to Mapia. ",
+      "listPrefix":"Please choose a gamemode from the following: ",
+      "error":"Sorry, I didn't get what you said. Please try saying the name of the game mode exactly. "
+    },
+    "gameMode":0,
+    "gameModes": ["travel", "trivia"],
+
+    "traveltheworld":{
+      "lost": "You lost!"
+    }
+  },
+
   "continent": {
     "response":"What continent would you like to be quized on? Say all for all questions. ",
     "listPrefix":"The continents are: ",
@@ -33,7 +48,7 @@ var gameTree = {
     "listPrefix":"The countries are: ",
     "error":"Sorry, I didn't get what you said. Please try saying the name of the country exactly. "
   },
-  "position":0,
+  "position":-1,
   "confirm":"Alright, you are set! Get ready! ",
 
   "target":{
@@ -63,6 +78,9 @@ var work = xlsx.parse(`${__dirname}/test.xlsx`)
 
 var map = {};
 
+var answeree;
+var questionee;
+
 console.log(work[0].data);
 //increment thru xlsx by row
 for(var i = 1; i < work[0].data.length; i++){
@@ -88,9 +106,10 @@ for(var i = 1; i < work[0].data.length; i++){
       //Push the continent,region,and country to our JSON map
       map[continent] = {};
       map[continent][region] = {};
-      map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
+      map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ], "Used":[]};
+      map[continent][region][country]["Used"].push(0);
 
-      //TODO: ADD Q&A DATA
+
     }else{
       //Get index of region
       //var indx1 = map.indexOfcontinent;
@@ -99,7 +118,8 @@ for(var i = 1; i < work[0].data.length; i++){
       if(!(region in map[continent] )){
         //if not, lets create a reference to region and country (and add Q&A data)
         map[continent][region] = {};
-        map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ]};
+        map[continent][region][country] = {"Question": [ (jordon) ], "Answer": [ (hope) ],"Used":[]};
+        map[continent][region][country]["Used"].push(0);
       }else{
         //if yes, lets see if country is in map
         if(!(country in map[continent][region])){
@@ -118,6 +138,8 @@ for(var i = 1; i < work[0].data.length; i++){
 console.log(util.inspect(map, false, null))
 
 
+//last output
+var lastres = "";
 
 //Port setup for hosting platform. Should be 8080 not 5000 by convention but who cares eh
 app.set('port', (process.env.PORT || 5000));
@@ -131,7 +153,7 @@ app.use(express.static(__dirname + '/public'));
 
 //You can delete this, its pretty unneccessary.
 app.get('/', function(rq, rs){
-  rs.send('/app.html');
+  rs.sendFile(path.join(__dirname + '/app.html'));
 });
 
 app.post('/webhook', function(rq, rs){
@@ -140,29 +162,127 @@ app.post('/webhook', function(rq, rs){
   rs.send({"speech":response, "displayText":response});
 });
 
-rl.on('line', (input) => {
-  cmdtest(input);
+app.get('/json', function(rq,rs){
+  rs.set('Content-Type', 'application/json');
+  rs.send(gameTree);
 });
+
+rl.on('line', (input) => {
+  console.log(cmdtest(input));
+});
+
+io.on('connection', function(socket){
+
+  if(gameTree.position > 4){
+  //console.log(res);
+  //console.log(answer);
+  console.log(answeree);
+  //console.log((gameTree.target.region === undefined));
+  var resp = {
+    "target":{
+      "continent": (gameTree.target.continent === undefined && gameTree.position > 4) ? gameTree.indexes.mapindex : gameTree.target.continent,
+      "region": (gameTree.target.region === undefined && gameTree.position > 4) ? gameTree.indexes.regindex : gameTree.target.region,
+      "country": (gameTree.target.country === undefined && gameTree.position > 4) ? gameTree.indexes.conindex : gameTree.target.country
+    },
+    "question": questionee,
+    "answer": answeree
+  }
+  console.log(Object.keys(map));
+  console.log(gameTree.indexes.mapindex);
+  io.emit('update', resp);
+
+}else{
+    var resp = {
+      "target":{
+        "continent": "",
+        "region": "",
+        "country": ""
+      },
+      "question": (lastres == "" || lastres === undefined) ? "Say Something To Start!" : lastres,
+      "answer": ""
+    }
+    io.emit('update', resp);
+  }
+
+  socket.on('query',function(m){
+
+    cmdtest(m);
+    if(gameTree.position < 5){
+    var resp = {
+      "target":{
+        "continent": "",
+        "region": "",
+        "country": ""
+      },
+      "question": (lastres == "" || lastres === undefined) ? "Say Something To Start!" : lastres,
+      "answer": ""
+    }
+    io.emit('update', resp);
+  }
+
+  });
+
+
+
+
+}
+);
 
 function cmdtest(rq){
   var req = rq;
   var res = "";
   if(typeof req !== undefined && req != ""){
+    //TODO: change this so it starts at zero lmao
+    if(gameTree.position == -1){
+      res+= gameTree.game.setup.response;
+      res+= gameTree.game.setup.listPrefix;
+      for(var i in gameTree.game.gameModes){
+        res+= gameTree.game.gameModes[i] +", ";
 
-
-    //Check if game is at default start
-    if(gameTree.position == 0){
-      //If game is start, give a valid response to indicate this
-      res += gameTree.continent.response;
-      res += gameTree.continent.listPrefix;
-      for(var i in map){
-        res+= i + ", ";
       }
+
       res = res.substring(0, res.length-2);
+
       gameTree.position++;
+    }
+    //Check if game is at default start
+    else if(gameTree.position == 0){
+      var answer;
+      var words = req.toLowerCase().split(" ");
+      for(var i = 0; i < words.length; i++){
+        for(var j = 0; j < gameTree.game.gameModes.length; j++){
+          console.log(gameTree.game.gameModes[j].replace(/\s+/g, '') + " " + words[i].replace(/\s+/g, ''));
+          if(gameTree.game.gameModes[j].replace(/\s+/g, '') == words[i].replace(/\s+/g, '')){
+            answer = j;
+          }
+        }
+      }
+      if(answer === undefined){
+        res+= gameTree.game.setup.error;
+        res +=" "+ gameTree.game.setup.listPrefix;
+        for(var i in gameTree.game.gameModes){
+          res+= gameTree.game.gameModes[i] + ", ";
+        }
+        res = res.substring(0, res.length-2);
+      }else
 
-
-
+      {
+        console.log(answer);
+        gameTree.game.gameMode = answer;
+        if(gameTree.game.gameMode == 0){
+          gameTree.position = 4;
+          res+= gameTree.confirm;
+        }else if(gameTree.game.gameMode == 1){
+          //If game is start, give a valid response to indicate this
+          res += gameTree.continent.response;
+          res += gameTree.continent.listPrefix;
+          for(var i in map){
+            res+= i + ", ";
+          }
+          res = res.substring(0, res.length-2);
+          gameTree.position++;
+        }
+      }
     }else if(gameTree.position == 1){
 
       //GET/PARSE "ALL"
@@ -294,8 +414,11 @@ function cmdtest(rq){
     //TODO: change responses for correct to incorrect to be defined up top
     //TODO: implement lives system. maybe hints?
     //TODO: Make a better reset system lmao
-    if(gameTree.position == 4){
-      res += getQuestion();
+    //TODO: add help command?
+
+    //NOW ONLY LAUNCHES ON Gamemode 1
+    if(gameTree.position == 4 && gameTree.game.gameMode == 1){
+      questionee = getRandomQuestion(); res += questionee;
       gameTree.position++;
     }else if(gameTree.position == 5){
       if(req.indexOf("reset") > -1){
@@ -303,70 +426,174 @@ function cmdtest(rq){
         res+=gameTree.config.reset;
 
       }else if(gameTree.target.continent === undefined){
-        var answer = map[gameTree.indexes.mapindex][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
-        if(is_match(answer, req)){
+        answeree = map[gameTree.indexes.mapindex][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
+        console.log(answeree)
+        if(is_match(answeree, req)){
           res += gameTree.config.correct;
-          res += getQuestion();
+          questionee = getRandomQuestion(); res += questionee;
           //gameTree.position--;
         }else{
           gameTree.config.lives--;
-          res+=gameTree.config.incorrect + gameTree.config.lives;
+          res+=gameTree.config.incorrect;
         }
       }else{
         if(gameTree.target.region === undefined){
-          var answer = map[gameTree.target.continent][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
-          if(is_match(answer, req)){
+          answeree = map[gameTree.target.continent][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
+          if(is_match(answeree, req)){
             res += gameTree.config.correct;
-            res += getQuestion();
+            questionee = getRandomQuestion(); res += questionee;
             //gameTree.position--;
           }else{
             gameTree.config.lives--;
-            res+=gameTree.config.incorrect + gameTree.config.lives;
+            res+=gameTree.config.incorrect;
           }
         }else{
           if(gameTree.target.country === undefined){
-            var answer = map[gameTree.target.continent][gameTree.target.region][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
-            if(is_match(answer, req)){
+            answeree = map[gameTree.target.continent][gameTree.target.region][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
+            if(is_match(answeree, req)){
               res+=gameTree.config.correct;
-              res += getQuestion();
+              questionee = getRandomQuestion(); res += questionee;
               //gameTree.position--;
             }else{
               gameTree.config.lives--;
-              res+=gameTree.config.incorrect + gameTree.config.lives;
+              res+=gameTree.config.incorrect;
             }
           }else{
-            var answer = map[gameTree.target.continent][gameTree.target.region][gameTree.target.country]["Answer"][gameTree.indexes.qindex];
-            if(is_match(answer, req)){
+            answeree = map[gameTree.target.continent][gameTree.target.region][gameTree.target.country]["Answer"][gameTree.indexes.qindex];
+            if(is_match(answeree, req)){
               res += gameTree.config.correct;
-              res += getQuestion();
+              questionee = getRandomQuestion(); res += questionee;
               //gameTree.position--;
             }else{
               gameTree.config.lives--;
-              res+= gameTree.config.incorrect + gameTree.config.lives;
+              res+= gameTree.config.incorrect
             }
           }
         }
       }
     }
 
+    if(gameTree.position == 4 && gameTree.game.gameMode == 0){
+
+
+      questionee = getRandomQuestion();
+      res += questionee;
+      gameTree.position++;
+    }else if(gameTree.position == 5 && gameTree.game.gameMode == 0){
+
+    }
+
   }
 
-  console.log(res);
+  if(gameTree.game.gameMode == 0 && gameTree.position == 5){
+    if(gameTree.game.lives <= 0){
+      gameTree = JSON.parse(JSON.stringify(o_gameTree));
+      res+=gameTree.game.traveltheworld.lost;
+    }else{
+      res+=gameTree.config.lives;
+    }
+  }
+
+
+  if(gameTree.position > 4 && answeree !== undefined){
+  //console.log(res);
+  //console.log(answer);
+  console.log(answeree);
+  //console.log((gameTree.target.region === undefined));
+  var resp = {
+    "target":{
+      "continent": (gameTree.target.continent === undefined && gameTree.position > 4) ? gameTree.indexes.mapindex : gameTree.target.continent,
+      "region": (gameTree.target.region === undefined && gameTree.position > 4) ? gameTree.indexes.regindex : gameTree.target.region,
+      "country": (gameTree.target.country === undefined && gameTree.position > 4) ? gameTree.indexes.conindex : gameTree.target.country
+    },
+    "question": questionee,
+    "answer": answeree
+  }
+  console.log(Object.keys(map));
+  console.log(gameTree.indexes.mapindex);
+  io.emit('update', resp);
+
+  }
+  lastres = res;
   return(res);
 }
 
 function is_match(real,user){
   //TODO: Multiple answers
   var isMatch = false;
-  var user_f = user.replace(/\s+/g, '').toLowerCase();
-  var real_f = real.replace(/\s+/g, '').toLowerCase();
+  var user_f = user.toLowerCase();
+  var real_f = real.toLowerCase();
   console.log(user_f);
   console.log(real_f);
 
   var ranswers = real_f.toLowerCase().split("/");
+
+  var usr_splt = user_f.split(" ");
+  var usr_nmrindx = []
+  var hasNumberInAnswer = false;
+  for(var i = 0; i < usr_splt.length; i++){
+      usr_nmrindx.push(!isNaN(parseInt(usr_splt[i].replace(/\s+/g, ''))));
+      if(!isNaN(parseInt(usr_splt[i].replace(/\s+/g, '')))){
+        hasNumberInAnswer = true;
+      }
+  }
+
   console.log(ranswers);
   for(var i = 0; i < ranswers.length; i++){
-    if(user_f.indexOf(ranswers[i]) > -1){
+    if(ranswers[i].indexOf("@") > -1){
+      var splt = ranswers[i].split(" ");
+      console.log("-valid loop start-")
+      //parse through all the words in answer
+      for(var j = 0; j < splt.length;  j++){
+
+        var sanitiz = splt[j].replace(/\s+/g, '')
+
+        console.log("sanitiz: " + sanitiz);
+        //if in the word there is the range key
+        if(splt[j].indexOf("@") > -1){
+          //point of @
+          var delimitIndex = sanitiz.indexOf("@");
+          var numberOne = parseInt(sanitiz.substring(0, delimitIndex));
+          var numberTwo = parseInt(sanitiz.substring(delimitIndex+1, splt[j].length));
+          console.log("number one: " + numberOne);
+          console.log("number two: " + numberTwo);
+          //make sure stuff is correct
+          if(!isNaN(numberOne) && !isNaN(numberTwo)){
+            //check through usr
+            for(var h= 0; h < usr_splt.length; h++){
+              //if word is number in response
+              if(usr_nmrindx[h]){
+                //parse the number
+                var usernum= parseInt(usr_splt[h].replace(/\s+/g, ''));
+                console.log("Usernum: "+usernum);
+                //check if in range
+                if(usernum >= numberOne && usernum <= numberTwo){
+                  console.log(usernum + "in Range!");
+                  //if in range, change correct answer
+                  splt[j] = usr_splt[h].replace(/\s+/g, '');
+                  //set thing to false for multiples
+                  usr_nmrindx[h]=false;
+                  //end the for loop
+                  h = usr_splt.length
+                }
+              }
+            }
+          }
+          console.log("-end loop-");
+        }
+      }
+      ranswers[i] = "";
+      for(var j = 0; j < splt.length; j++){
+        ranswers[i] += splt[j];
+      }
+    }
+    real_f = real.toLowerCase().replace(/\s+/g, '');
+    console.log("-----");
+    console.log(ranswers[i]);
+    console.log(user_f);
+    console.log(user_f.toLowerCase().replace(/\s+/g, '') + " okay")
+    console.log("-----");
+    if(user_f.toLowerCase().replace(/\s+/g, '').indexOf(ranswers[i].toLowerCase().replace(/\s+/g, '')) > -1){
       isMatch = true;
     }
   }
@@ -374,7 +601,7 @@ function is_match(real,user){
   return isMatch;
 }
 
-function getQuestion(){
+function getRandomQuestion(){
   var res = "";
   //Get question
   if(gameTree.target.continent === undefined){
@@ -387,6 +614,7 @@ function getQuestion(){
     var questions = map[gameTree.indexes.mapindex][gameTree.indexes.regindex][gameTree.indexes.conindex]["Question"];
     gameTree.indexes.qindex = Math.floor(questions.length * Math.random());
     res+=questions[gameTree.indexes.qindex];
+    answeree = map[gameTree.indexes.mapindex][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
   }else{
     if(gameTree.target.region === undefined){
       //TODO: Pick a random question from continent
@@ -397,6 +625,8 @@ function getQuestion(){
       var questions = map[gameTree.target.continent][gameTree.indexes.regindex][gameTree.indexes.conindex]["Question"];
       gameTree.indexes.qindex = Math.floor(questions.length * Math.random());
       res+=questions[gameTree.indexes.qindex];
+      answeree = map[gameTree.target.continent][gameTree.indexes.regindex][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
+
     }else{
       if(gameTree.target.country === undefined){
         //TODO: Pick a random question from region
@@ -405,12 +635,13 @@ function getQuestion(){
         var questions = map[gameTree.target.continent][gameTree.target.region][gameTree.indexes.conindex]["Question"];
         gameTree.indexes.qindex = Math.floor(questions.length * Math.random());
         res+=questions[gameTree.indexes.qindex];
-
+        answeree = map[gameTree.target.continent][gameTree.target.region][gameTree.indexes.conindex]["Answer"][gameTree.indexes.qindex];
       }else{
         //Pick a random question
         var questions = map[gameTree.target.continent][gameTree.target.region][gameTree.target.country]["Question"];
         gameTree.indexes.qindex = Math.floor(questions.length * Math.random());
         res+=questions[gameTree.indexes.qindex];
+        answeree = map[gameTree.target.continent][gameTree.target.region][gameTree.target.country]["Answer"][gameTree.indexes.qindex];
       }
     }
   }

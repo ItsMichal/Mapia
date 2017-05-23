@@ -12,6 +12,7 @@
     "body-parser": "^1.17.1",
     "express": "^4.15.2",
     "fs": "0.0.1-security",
-    "node-xlsx": "^0.7.4"
+    "node-xlsx": "^0.7.4",
+    "socket.io": "^1.7.3"
   }
 }
